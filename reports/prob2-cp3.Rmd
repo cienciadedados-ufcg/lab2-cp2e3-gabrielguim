@@ -1,0 +1,249 @@
+---
+title: '"Acústico" == "Deprê"?'
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(viridis)
+library(here)
+library(plotly)
+theme_set(theme_minimal())
+```
+
+```{r echo=FALSE}
+playlist = read_csv(here("data/acoustic-spotify-playlist.csv"),
+                    progress = FALSE,
+                    col_types = cols(
+                              .default = col_character(),
+                              playlist_num_tracks = col_integer(),
+                              danceability = col_double(),
+                              energy = col_double(),
+                              loudness = col_double(),
+                              speechiness = col_double(),
+                              acousticness = col_double(),
+                              instrumentalness = col_double(),
+                              liveness = col_double(),
+                              valence = col_double(),
+                              tempo = col_double(),
+                              duration_ms = col_double(),
+                              time_signature = col_integer()
+                            ))
+
+john_mayer = read_csv(here("data/john-mayer-songs.csv"),
+                    progress = FALSE,
+                    col_types = cols(
+                              .default = col_character(),
+                              danceability = col_double(),
+                              energy = col_double(),
+                              loudness = col_double(),
+                              speechiness = col_double(),
+                              acousticness = col_double(),
+                              instrumentalness = col_double(),
+                              liveness = col_double(),
+                              valence = col_double(),
+                              tempo = col_double(),
+                              duration_ms = col_double(),
+                              time_signature = col_integer()
+                            ))
+
+
+```
+
+# Olá, pessoal!
+
+Aqui teremos uma análise sobre algumas playlists que estão no __Spotify__. Você pode acessá-las pelos endereços abaixo:
+
+[Afternoon Acoustic - Spotify](https://open.spotify.com/user/spotify/playlist/37i9dQZF1DX4E3UdUs7fUx)
+
+[Acoustic Favorites! - Jason Chen](https://open.spotify.com/user/jasonchenmusic/playlist/1QuWiAdlvdsVrR9IZcXeiC)
+
+[Boyce Avenue Acoustic Covers - Boyce Avenue](https://open.spotify.com/user/boyceavenue/playlist/4XkMSl1R3f7WsNeTZgrxv5)
+
+[Acoustic Covers - Spotify](https://open.spotify.com/user/spotify/playlist/37i9dQZF1DWXmlLSKkfdAk)
+
+[Classic Acoustic - Spotify](https://open.spotify.com/user/spotify/playlist/37i9dQZF1DX504r1DvyvxG)
+
+O nosso objetivo aqui é tirar algumas dúvidas sobre músicas __acústicas__... Será que geralmente elas são __deprês__ mesmo? Ou não, será que são mais __dançantes__ por termos a batida rítmica do violão que em alguns casos nos lembra um pouco o __folk__? Veremos :^) 
+
+Também faremos algumas comparações com músicas que foram gravadas tanto em estúdio como ao vivo, para isso observaremos algumas músicas de [__John Mayer__](https://open.spotify.com/artist/0hEurMDQu99nJRq8pTxO14).
+
+# E os dados?
+
+Para podermos analisar as músicas estamos utilizando uma biblioteca chamada [__spotifyr__](https://github.com/charlie86/spotifyr) que nos auxilia a coletar informações de artistas/músicas/playlists disponibilizadas pela [API](https://beta.developer.spotify.com/documentation/web-api/) do __Spotify__. 
+
+Caso você tenha o interesse de ver uma descrição mais detalhada sobre os dados coletados por essa API, você também pode dar uma olhada [aqui](https://beta.developer.spotify.com/documentation/web-api/reference/object-model/) onde são descritos todos os atributos dos modelos de dados, o que eles significam e quais os valores que podem assumir e tal. 
+
+Para essa análise iremos utilizar apenas alguns atributos das __músicas__.
+
+# "_acousticness_"
+
+```
+A confidence measure from 0.0 to 1.0 of whether the track is acoustic. 1.0 represents high confidence the track is acoustic. (FLOAT)
+```
+
+O atributo _acousticness_ ou, dando uma aportuguesada, _acusticidade_ é uma medida de confiança que varia de __0.0__ até __1.0__. Quanto mais próximo de __1.0__, representa uma alta confiança em que a música é acústima. 
+
+Para o nosso conjunto de dados, a _acusticidade_ se comporta da seguinte forma:
+
+```{r echo=FALSE}
+
+playlist %>% select(acousticness) %>% summary()
+
+```
+
+Temos o valor mínimo como sendo __0.0021__ e o máximo como sendo __0.9890__. Ou seja, por mais que nossas playlists sejam classificadas como acústicas, temos algumas músicas em que a _acusticidade_ é bem baixa. Mas como se trata de uma medida de confiança, iremos levar em consideração nas nossas respostas. 
+
+# Músicas acústicas são mais tristes?
+
+Para responder essa pergunta, precisamos analisar um dado fornecido pelo __Spotify__ chamado _valence_:
+
+# "_valence_"
+
+```
+A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track. Tracks with high valence sound more positive (e.g. happy, cheerful, euphoric), while tracks with low valence sound more negative (e.g. sad, depressed, angry).
+```
+
+O atributo _valence_ representa a positividade de uma música. Quanto mais próximo de __1.0__ mais feliz, por outro lado, quanto mais próximo de __0.0__ mas deprê.
+
+```{r echo=FALSE}
+
+playlist %>% select(valence) %>% summary()
+
+```
+
+É fácil perceber que as nossas músicas não são muito "felizes", pois até o terceiro quadrante, ou seja, 75% dos nossos dados, temos _valence_ com __0.5450__
+
+```{r echo=FALSE}
+
+p <- plot_ly(playlist, x = ~acousticness, y = ~(1 - valence),
+                text = ~paste("Acousticness: ", acousticness, "<br>Valence: ", valence, "<br>Nome da Música: ", track_name),
+                color = ~valence, size = ~(1 - valence),
+                type = 'scatter', mode = 'markers', name = "Música") %>%
+            layout(xaxis = list(title='Acusticidade'),
+                    yaxis = list(title='Nível de tristeza'))
+
+p
+    
+```
+
+
+Na visualização acima temos que para o __Nível de Tristeza__: 0 é felicidade pura e 1 é nível máximo de sofrência.
+
+Apesar de conseguirmos ver um pouco que temos uma concentração maior de músicas na parte superior direita, não podemos tirar muitas conclusões pela relação das duas variáveis visto que a relação entre elas é __não-linear__ e __fraca__. Nas nossas playlists temos tanto músicas acústicas que são muito tristes (__Ordinary World__), como músicas acústicas que são muito felizes (__Cheerleader - Acoustic__).
+
+Portanto, para esse nosso conjunto de dados, a "_acousticness_" de uma música não diz muito sobre sua "_valence_"
+
+# O boato de que "acorde menor é pra música triste" é verdade mesmo ou é mito?
+
+No nosso conjunto de dados temos informações do "tom" em que a música é tocada e utilizaremos isso para responder nosso questionamento :)
+
+```{r echo=FALSE}
+    
+p1 <- plot_ly(playlist %>% filter(mode == "minor"), y = ~valence, type = "box", name = "Tom Menor")
+p2 <- plot_ly(playlist %>% filter(mode == "major"), y = ~valence, type = "box", name = "Tom Maior")
+p <- subplot(p1, p2, shareX = TRUE, shareY = TRUE)
+
+
+p
+
+```
+
+
+A partir da visualização podemos concluir que é um mito pois temos que a _menor nota_ para as músicas que possuem o tom __maior__ é maior que a _menor nota_ para as músicas que possuem o tom __menor__. Além do mais, as músicas de tom maior possuem _valence_ menor que as de tom menor, ou seja, são mais tristes que as de tom menor.
+
+# Qual o __peso__ do BPM na energia de uma música?
+
+# "_energy_"
+
+```
+Energy is a measure from 0.0 to 1.0 and represents a perceptual measure of intensity and activity. Typically, energetic tracks feel fast, loud, and noisy. For example, death metal has high energy, while a Bach prelude scores low on the scale. Perceptual features contributing to this attribute include dynamic range, perceived loudness, timbre, onset rate, and general entropy.
+```
+
+__Energy__ é uma variável que varia de __0.0__ a __1.0__ e representa a intensidade de uma música. Quanto mais rápida, barulhenta ou alta uma música for, mais ela será "energética".
+
+
+```{r echo=FALSE}
+
+p <- plot_ly(playlist, x = ~energy, y = ~tempo,
+                text = ~paste("Tempo (BPM): ", tempo, "<br>Energy: ", energy, "<br>Nome da Música: ", track_name),
+                color = ~acousticness, size = ~energy,
+                type = 'scatter', mode = 'markers', name = "Música") %>%
+            layout(xaxis = list(title='Energia'),
+                    yaxis = list(title='Tempo (BPM)'))
+
+p
+
+```
+
+
+Com a visualização acima podemos perceber que não existe uma associação linear entre as variáveis observadas.
+
+Mas por outro lado, conseguimos perceber que as músicas com baixa _energy_ são músicas com maior _acousticness_, o que de certa forma faz sentido visto que quanto mais acústica, menos barulho e agitação. 
+
+# Qual a relação entre a energia/volume de uma música e sua acusticidade?
+
+# "_loudness_"
+
+```
+The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude). Values typical range between -60 and 0 db.
+```
+
+Sabemos que a energia de uma música está fortemente relacionada com a sua intensidade, ou seja, a altura e tempo.
+
+```{r echo=FALSE}
+
+p <- plot_ly(playlist, x = ~energy, y = ~loudness,
+                text = ~paste("Acousticness: ", acousticness, "Loudness: ", 
+                              loudness, "<br>Energy: ", energy, "<br>Nome da Música: ", track_name),
+                color = ~acousticness,
+                type = 'scatter', mode = 'markers', name = "Música") %>%
+            layout(xaxis = list(title='Energia'),
+                    yaxis = list(title='Volume'))
+
+p
+
+```
+
+Como esperado, há uma relação forte (mas não linear) das variáveis _energy_ e _loudness_ e também como esperado, as músicas que são mais acústicas, consequentemente, possuem __menor energia__ e menor __volume__.
+
+# Uma música é mais animada quando tocada ao vivo?
+
+Nesse momento iremos utilizar as músicas de __John Mayer__ para tentar responder nossa pergunta, visto que ele tem várias músicas no _Spotify_ que são ao vivo.
+
+```{r echo=FALSE}
+live_songs <- john_mayer %>% 
+                filter(grepl("Live", track_name)) %>%
+                mutate(track_name_n = sapply(strsplit(track_name," - "), `[`, 1)) %>%
+                group_by(track_name_n) %>%
+                summarise(energy_m = median(energy), loudness_m = median(loudness))
+
+live_songs.names <- as.list.data.frame(live_songs %>% select(track_name_n))
+
+all_songs <- john_mayer %>% 
+    mutate(track_name_n = track_name) %>% 
+    filter(track_name %in% live_songs.names$track_name_n)
+
+p <- plot_ly(live_songs, x = ~track_name_n, y = ~energy_m, type = "scatter", mode = 'markers', size = ~loudness_m, name = "Ao Vivo") %>%
+        add_trace(all_songs, x = all_songs$track_name_n, y = all_songs$energy, size = all_songs$loudness, type = "scatter", mode = 'markers', name =  "Estúdio") %>%
+            layout(xaxis = list(title='Nome da Música'),
+                    yaxis = list(title='Energia'))
+
+p
+
+
+```
+
+```{r echo=FALSE}
+p1 <- plot_ly(live_songs, y = ~energy_m, type = "box", name = "Ao Vivo")
+p2 <- plot_ly(all_songs, y = ~energy, type = "box", name = "Estúdio")
+p <- subplot(p1, p2, shareX = TRUE, shareY = TRUE) %>%
+            layout(yaxis = list(title='Energia'))
+
+
+p
+```
+
+A partir das visualizações acima podemos perceber que geralmente as músicas possuem a mesma energia, pois tanto para músicas __Ao Vivo__ como para __Estúdio__ os valores de _energy_ estão concentrados entre valores próximos de __0.400__ e __0.800__. Mas também conseguimos perceber que as músicas gravadas em estúdio têm maior energia mediana, o que não nos dá muitas informações pois era esperado que as músicas ao vivo fossem mais energéticas, visto que tem a presença do público.
